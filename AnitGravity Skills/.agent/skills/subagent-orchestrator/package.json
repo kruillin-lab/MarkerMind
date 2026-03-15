@@ -1,0 +1,18 @@
+{
+  "name": "subagent-orchestrator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Parallel task orchestrator for single-repo, multi-task agent execution",
+  "scripts": {
+    "spawn": "ts-node scripts/spawn.ts",
+    "status": "ts-node scripts/status.ts",
+    "restore": "ts-node scripts/restore.ts",
+    "kill": "ts-node scripts/kill.ts",
+    "ci-monitor": "ts-node scripts/ci-monitor.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "ts-node": "^10.9.0"
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "mcpServers": {
+    "notion-mcp-server": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@notionhq/notion-mcp-server"
+      ],
+      "env": {
+        "OPENAPI_MCP_HEADERS": "{\"Authorization\": \"Bearer <YOUR_API_KEY>\", \"Notion-Version\": \"2022-06-28\"}"
+      },
+      "disabled": true
+    },
+    "supabase-mcp-server": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "<YOUR_API_KEY>"
+      ],
+      "env": {},
+      "disabled": false
+    },
+    "vercel": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@robinson_ai_systems/vercel-mcp"
+      ],
+      "env": {
+        "VERCEL_TOKEN": "<YOUR_API_KEY>"
+      },
+      "disabled": false
+    },
+    "zapier": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.zapier.com/api/v1/connect?token=<YOUR_API_KEY>"
+      ],
+      "disabled": true
+    },
+    "pinecone": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@pinecone-database/mcp"
+      ],
+      "env": {
+        "PINECONE_API_KEY": "<YOUR_API_KEY>"
+      },
+      "disabled": false
+    },
+    "fireflies": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://api.fireflies.ai/mcp",
+        "--header",
+        "Authorization: Bearer <YOUR_API_KEY>"
+      ],
+      "disabled": true
+    },
+    "stitch": {
+      "serverUrl": "https://stitch.googleapis.com/mcp",
+      "headers": {
+        "X-Goog-Api-Key": "<YOUR_API_KEY>"
+      },
+      "disabled": false
+    },
+    "apify": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@apify/actors-mcp-server"
+      ],
+      "env": {
+        "APIFY_TOKEN": "<YOUR_API_KEY>"
+      },
+      "disabled": true
+    },
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp@latest"
+      ],
+      "disabled": false
+    },
+    "notebooklm": {
+      "command": "notebooklm-mcp",
+      "args": [],
+      "disabled": false
+    }
+  },
+  "disabledTools": []
+}

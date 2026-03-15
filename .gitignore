@@ -1,0 +1,31 @@
+# Build outputs
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# IDE
+.idea/
+*.DotSettings.user
+
+# Dependencies
+packages/
+
+# AI tool directories (may contain nested git repos)
+.claude/
+.clawhub/
+.gemini/
+.openclaw/
+.opencode/
+
+# Local dev
+*.local.md
+
+# Auto-worktree directory
+.worktrees/
+
+# Auto-worktree directory
+.worktrees/

@@ -1,0 +1,30 @@
+<Project Sdk="Dalamud.NET.Sdk/14.0.1">
+  <PropertyGroup>
+    <AssemblyName>TankCooldownHelper</AssemblyName>
+    <Version>1.0.0.0</Version>
+    <Description>Real-time damage vs healing tracker with cooldown suggestions</Description>
+    <Authors>YourName</Authors>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <LangVersion>13</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <OutputPath>$(AppData)\XIVLauncher\devPlugins\TankCooldownHelper\</OutputPath>
+    <DalamudPackagerEnabled>false</DalamudPackagerEnabled>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ECommons" Version="3.1.0.13" />
+  </ItemGroup>
+
+  <Target Name="CopyToDevPlugins" AfterTargets="Build">
+    <PropertyGroup>
+      <DevPluginsPath>$(AppData)\XIVLauncher\devPlugins\TankCooldownHelper\</DevPluginsPath>
+    </PropertyGroup>
+    <MakeDir Directories="$(DevPluginsPath)" Condition="!Exists('$(DevPluginsPath)')" />
+    <Copy SourceFiles="$(OutputPath)TankCooldownHelper.dll" DestinationFiles="$(DevPluginsPath)TankCooldownHelper.dll" />
+    <Copy SourceFiles="$(OutputPath)TankCooldownHelper.json" DestinationFiles="$(DevPluginsPath)TankCooldownHelper.json" />
+    <Copy SourceFiles="$(OutputPath)ECommons.dll" DestinationFiles="$(DevPluginsPath)ECommons.dll" />
+  </Target>
+</Project>

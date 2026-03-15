@@ -1,0 +1,16 @@
+{
+  "Author": "YourName",
+  "Name": "Tank Cooldown Helper",
+  "InternalName": "TankCooldownHelper",
+  "AssemblyVersion": "1.0.0.0",
+  "Description": "Real-time damage vs healing tracker with cooldown suggestions for tanks and healers",
+  "ApplicableVersion": "any",
+  "DalamudApiLevel": 14,
+  "LoadPriority": 0,
+  "Tags": ["tank", "cooldown", "mitigation", "healing", "utility"],
+  "CategoryTags": ["utility"],
+  "IsHide": false,
+  "IsTestingExclusive": false,
+  "IconUrl": "",
+  "Punchline": "Know when to use your cooldowns before it's too late"
+}
