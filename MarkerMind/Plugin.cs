@@ -1,5 +1,6 @@
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using Dalamud.Game.Command;
 
 namespace MarkerMind;
 
@@ -11,7 +12,7 @@ public sealed class Plugin : IDalamudPlugin
     public static IFramework Framework { get; private set; } = null!;
     public static IChatGui Chat { get; private set; } = null!;
     public static IObjectTable Objects { get; private set; } = null!;
-    public static ICondition Condition { get; private set; } = null!;
+    public static ICommandManager CommandManager { get; private set; } = null!;
     
     public string Name => "MarkerMind";
     
@@ -30,7 +31,7 @@ public sealed class Plugin : IDalamudPlugin
         IFramework framework,
         IChatGui chat,
         IObjectTable objects,
-        ICondition condition)
+        ICommandManager commandManager)
     {
         Instance = this;
         PluginInterface = pluginInterface;
@@ -38,7 +39,7 @@ public sealed class Plugin : IDalamudPlugin
         Framework = framework;
         Chat = chat;
         Objects = objects;
-        Condition = condition;
+        CommandManager = commandManager;
         
         Config = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         Config.Initialize();
@@ -65,6 +66,31 @@ public sealed class Plugin : IDalamudPlugin
         // Welcome message
         var status = bossmodBridge.IsBossmodAvailable ? "enabled" : "disabled";
         chat.Print($"[MarkerMind] Loaded! Bossmod integration: {status}");
+        chat.Print("[MarkerMind] Type /mm to open settings, /mmtest for test mechanic");
+        
+        // Register commands
+        commandManager.AddHandler("/mm", new CommandInfo(OnMMCommand)
+        {
+            HelpMessage = "Open MarkerMind settings",
+            ShowInHelp = true
+        });
+        
+        commandManager.AddHandler("/mmtest", new CommandInfo(OnTestCommand)
+        {
+            HelpMessage = "Trigger a test mechanic",
+            ShowInHelp = true
+        });
+    }
+    
+    private void OnMMCommand(string command, string args)
+    {
+        configWindow.Toggle();
+    }
+    
+    private void OnTestCommand(string command, string args)
+    {
+        Plugin.Chat.Print("[MarkerMind] Triggering test mechanic...");
+        bossmodBridge.TestMechanic();
     }
     
     private void WireEvents()
@@ -114,6 +140,10 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.Draw -= configWindow.Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;
         PluginInterface.UiBuilder.OpenMainUi -= configWindow.Toggle;
+        
+        // Unregister commands
+        CommandManager.RemoveHandler("/mm");
+        CommandManager.RemoveHandler("/mmtest");
         
         learningEngine?.Dispose();
         splatoonRenderer?.Dispose();
