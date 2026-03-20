@@ -1,0 +1,26 @@
+{
+  "Author": "MarkerMind",
+  "Name": "MarkerMind",
+  "InternalName": "MarkerMind",
+  "AssemblyVersion": "1.0.0.0",
+  "Description": "Bridges Bossmod mechanics to Splatoon markers, learning from your positioning over time.",
+  "ApplicableVersion": "any",
+  "RepoUrl": "https://github.com/kruillin-lab/MarkerMind",
+  "Tags": [
+    "combat",
+    "encounter",
+    "markers",
+    "learning",
+    "splatoon",
+    "bossmod"
+  ],
+  "DalamudApiLevel": 14,
+  "LoadRequiredState": 0,
+  "LoadSync": false,
+  "CanUnloadAsync": false,
+  "LoadPriority": 0,
+  "ImageUrls": [],
+  "IconUrl": "",
+  "Punchline": "Self-learning encounter markers via Splatoon",
+  "AcceptsFeedback": true
+}

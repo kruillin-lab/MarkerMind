@@ -1,0 +1,6 @@
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net8.0-windows\MarkerMind.csproj.AssemblyReference.cache
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net8.0-windows\MarkerMind.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net8.0-windows\MarkerMind.AssemblyInfoInputs.cache
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net8.0-windows\MarkerMind.AssemblyInfo.cs
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net8.0-windows\MarkerMind.csproj.CoreCompileInputs.cache
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net8.0-windows\MarkerMind.sourcelink.json

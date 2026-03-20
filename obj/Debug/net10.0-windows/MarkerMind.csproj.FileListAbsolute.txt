@@ -1,0 +1,13 @@
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\bin\Debug\net10.0-windows\MarkerMind.deps.json
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\bin\Debug\net10.0-windows\MarkerMind.dll
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\bin\Debug\net10.0-windows\MarkerMind.pdb
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net10.0-windows\MarkerMind.csproj.AssemblyReference.cache
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net10.0-windows\MarkerMind.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net10.0-windows\MarkerMind.AssemblyInfoInputs.cache
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net10.0-windows\MarkerMind.AssemblyInfo.cs
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net10.0-windows\MarkerMind.csproj.CoreCompileInputs.cache
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net10.0-windows\MarkerMind.sourcelink.json
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net10.0-windows\MarkerMind.dll
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net10.0-windows\refint\MarkerMind.dll
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net10.0-windows\MarkerMind.pdb
+C:\Users\kruil\Documents\Projects\Obsidian\MarkerMind\obj\Debug\net10.0-windows\ref\MarkerMind.dll
