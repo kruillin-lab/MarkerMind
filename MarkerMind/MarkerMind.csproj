@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <LangVersion>11</LangVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DalamudLibPath>$(APPDATA)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DalamudPackager" Version="2.1.13" />
+    <Reference Include="Dalamud">
+      <HintPath>$(DalamudLibPath)Dalamud.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="FFXIVClientStructs">
+      <HintPath>$(DalamudLibPath)FFXIVClientStructs.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="ImGui.NET">
+      <HintPath>$(DalamudLibPath)ImGui.NET.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Lumina">
+      <HintPath>$(DalamudLibPath)Lumina.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Lumina.Excel">
+      <HintPath>$(DalamudLibPath)Lumina.Excel.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\ECommons\ECommons\ECommons.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopyToDevPlugins" AfterTargets="Build">
+    <PropertyGroup>
+      <DevPluginsPath>$(APPDATA)\XIVLauncher\devPlugins\MarkerMind\</DevPluginsPath>
+    </PropertyGroup>
+    <MakeDir Directories="$(DevPluginsPath)" Condition="!Exists('$(DevPluginsPath)')" />
+    <Copy SourceFiles="$(OutputPath)MarkerMind.dll" DestinationFiles="$(DevPluginsPath)MarkerMind.dll" />
+    <Copy SourceFiles="$(OutputPath)ECommons.dll" DestinationFiles="$(DevPluginsPath)ECommons.dll" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\MarkerMind.json" DestinationFiles="$(DevPluginsPath)MarkerMind.json" />
+  </Target>
+</Project>
