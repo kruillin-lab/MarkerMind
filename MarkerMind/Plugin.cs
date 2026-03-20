@@ -98,14 +98,20 @@ public sealed class Plugin : IDalamudPlugin
         // Bossmod events -> Learning
         bossmodBridge.OnMechanicStart += (mechanic) =>
         {
+            Plugin.Chat.Print($"[MarkerMind DEBUG] Mechanic started: {mechanic.MechanicName}, SafeZones: {mechanic.SafeZones.Count}");
             var mechanicId = ComputeMechanicHash(mechanic);
             learningEngine.StartMechanic(mechanicId, mechanic.MechanicName);
             
             // Render initial marker
             var disclosureLevel = learningEngine.GetDisclosureLevel(mechanicId);
+            Plugin.Chat.Print($"[MarkerMind DEBUG] Disclosure level: {disclosureLevel}, SafeZones: {mechanic.SafeZones.Count}");
             if (mechanic.SafeZones.Count > 0)
             {
                 splatoonRenderer.RenderMarker(mechanicId, mechanic.SafeZones[0], disclosureLevel, gameState.Role);
+            }
+            else
+            {
+                Plugin.Chat.Print("[MarkerMind DEBUG] No safe zones to render!");
             }
         };
         

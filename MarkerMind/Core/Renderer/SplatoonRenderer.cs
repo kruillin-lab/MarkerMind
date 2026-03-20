@@ -51,10 +51,13 @@ public class SplatoonRenderer : IDisposable
     {
         var elements = new List<SplatoonElement>();
         
+        Plugin.Chat.Print($"[MarkerMind DEBUG] GenerateLayout called with level {disclosureLevel}");
+        
         // Add elements based on disclosure level
         switch (disclosureLevel)
         {
             case 1:
+                Plugin.Chat.Print("[MarkerMind DEBUG] Adding danger circle for level 1");
                 elements.Add(CreateCircle(position, 5.0f, 0xFF0000FF, "Danger"));
                 break;
             case 2:
@@ -73,6 +76,8 @@ public class SplatoonRenderer : IDisposable
                 break;
         }
         
+        Plugin.Chat.Print($"[MarkerMind DEBUG] Created {elements.Count} elements");
+        
         // Store for tracking
         foreach (var elem in elements)
         {
@@ -86,7 +91,10 @@ public class SplatoonRenderer : IDisposable
             Elements = elements
         };
         
-        return JsonSerializer.Serialize(layout, new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.Serialize(layout, new JsonSerializerOptions { WriteIndented = true });
+        Plugin.Chat.Print($"[MarkerMind DEBUG] Generated JSON: {json.Substring(0, Math.Min(100, json.Length))}...");
+        
+        return json;
     }
     
     private SplatoonElement CreateCircle(Vector3 position, float radius, uint color, string name)
@@ -126,20 +134,75 @@ public class SplatoonRenderer : IDisposable
     {
         try
         {
+            Plugin.Chat.Print($"[MarkerMind DEBUG] InjectIntoSplatoon called with JSON length: {layoutJson.Length}");
+            
             // Write to Splatoon's Script folder
             var tempPath = System.IO.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "XIVLauncher", "pluginConfigs", "Splatoon", "Script", "markermind_dynamic.json"
             );
             
+            Plugin.Chat.Print($"[MarkerMind DEBUG] Writing to: {tempPath}");
+            
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(tempPath)!);
             System.IO.File.WriteAllText(tempPath, layoutJson);
             
+            var exists = System.IO.File.Exists(tempPath);
+            Plugin.Chat.Print($"[MarkerMind DEBUG] File exists after write: {exists}");
+            
+            // Try to trigger Splatoon to reload scripts
+            try
+            {
+                var splatoonAssembly = AppDomain.CurrentDomain.GetAssemblies()
+                    .FirstOrDefault(a => a.FullName?.Contains("Splatoon") == true);
+                
+                if (splatoonAssembly != null)
+                {
+                    // Try to get Splatoon instance and call reload
+                    var splatoonType = splatoonAssembly.GetType("Splatoon.Splatoon");
+                    if (splatoonType != null)
+                    {
+                        var instanceProp = splatoonType.GetProperty("Instance");
+                        var instance = instanceProp?.GetValue(null);
+                        
+                        if (instance != null)
+                        {
+                            // Try to find reload method
+                            var reloadMethod = splatoonType.GetMethod("ReloadScript");
+                            if (reloadMethod != null)
+                            {
+                                reloadMethod.Invoke(instance, new object[] { "markermind_dynamic" });
+                                Plugin.Chat.Print("[MarkerMind DEBUG] Triggered Splatoon reload");
+                            }
+                            else
+                            {
+                                // Try ScriptManager
+                                var scriptManagerType = splatoonAssembly.GetType("Splatoon.Scripting.ScriptManager");
+                                if (scriptManagerType != null)
+                                {
+                                    var reloadAllMethod = scriptManagerType.GetMethod("ReloadAll");
+                                    if (reloadAllMethod != null)
+                                    {
+                                        reloadAllMethod.Invoke(null, null);
+                                        Plugin.Chat.Print("[MarkerMind DEBUG] Triggered ScriptManager reload");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Chat.Print($"[MarkerMind DEBUG] Could not trigger reload: {ex.Message}");
+            }
+            
             // Success if file was written
-            return System.IO.File.Exists(tempPath);
+            return exists;
         }
-        catch
+        catch (Exception ex)
         {
+            Plugin.Chat.Print($"[MarkerMind DEBUG] Inject failed: {ex.Message}");
             return false;
         }
     }
