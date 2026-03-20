@@ -1,20 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using System.Reflection;
 
 namespace MarkerMind;
 
 /// <summary>
-/// Renders visual markers via Splatoon plugin IPC.
+/// Renders visual markers via ECommons SplatoonAPI.
 /// Falls back to chat messages if Splatoon is not available.
 /// </summary>
 public class SplatoonRenderer : IDisposable
 {
     private bool isSplatoonAvailable = false;
-    private object? splatoonInstance = null;
-    private MethodInfo? addElementMethod = null;
-    private MethodInfo? removeElementMethod = null;
     private List<string> activeElementIds = new();
     private int elementCounter = 0;
     
@@ -27,33 +23,20 @@ public class SplatoonRenderer : IDisposable
     {
         try
         {
-            // Try to find Splatoon plugin via reflection
-            var splatoonType = Plugin.PluginInterface.GetType().Assembly
-                .GetType("Splatoon.Splatoon");
+            // Try to use ECommons SplatoonAPI
+            // ECommons provides a wrapper around Splatoon
+            var splatoonType = Type.GetType("ECommons.SplatoonAPI.Splatoon, ECommons");
             
             if (splatoonType != null)
             {
-                // Try to get Splatoon instance
-                var instanceField = splatoonType.GetField("Instance", BindingFlags.Public | BindingFlags.Static);
-                if (instanceField != null)
-                {
-                    splatoonInstance = instanceField.GetValue(null);
-                    
-                    // Look for methods to add/remove elements
-                    addElementMethod = splatoonType.GetMethod("AddDynamicElement");
-                    removeElementMethod = splatoonType.GetMethod("RemoveDynamicElement");
-                    
-                    if (addElementMethod != null)
-                    {
-                        isSplatoonAvailable = true;
-                        Plugin.Chat.Print("[MarkerMind] Splatoon detected! Visual markers enabled.");
-                        return;
-                    }
-                }
+                isSplatoonAvailable = true;
+                Plugin.Chat.Print("[MarkerMind] SplatoonAPI via ECommons detected!");
             }
-            
-            isSplatoonAvailable = false;
-            Plugin.Chat.Print("[MarkerMind] Splatoon not detected. Using chat fallback.");
+            else
+            {
+                isSplatoonAvailable = false;
+                Plugin.Chat.Print("[MarkerMind] SplatoonAPI not available. Using chat fallback.");
+            }
         }
         catch (Exception ex)
         {
@@ -67,7 +50,7 @@ public class SplatoonRenderer : IDisposable
         // Clear previous elements for this mechanic
         RemoveElementsForMechanic(mechanicId);
         
-        if (!isSplatoonAvailable || addElementMethod == null)
+        if (!isSplatoonAvailable)
         {
             RenderChatFallback(mechanicId, position, disclosureLevel);
             return;
@@ -75,124 +58,129 @@ public class SplatoonRenderer : IDisposable
         
         try
         {
+            // Use ECommons SplatoonAPI to draw elements
+            // For now, use reflection to call the API
+            var splatoonType = Type.GetType("ECommons.SplatoonAPI.Splatoon, ECommons");
+            if (splatoonType == null)
+            {
+                RenderChatFallback(mechanicId, position, disclosureLevel);
+                return;
+            }
+            
             // Render based on disclosure level
             switch (disclosureLevel)
             {
                 case 1:
-                    RenderDangerZone(mechanicId, position);
+                    RenderDangerZoneViaECommons(splatoonType, mechanicId, position);
                     break;
                 case 2:
-                    RenderDangerZone(mechanicId, position);
-                    RenderSafeSpot(mechanicId, position);
+                    RenderDangerZoneViaECommons(splatoonType, mechanicId, position);
+                    RenderSafeSpotViaECommons(splatoonType, mechanicId, position);
                     break;
                 case 3:
                 case 4:
-                    RenderDangerZone(mechanicId, position);
-                    RenderSafeSpot(mechanicId, position);
-                    RenderMovementPath(mechanicId, position);
+                    RenderDangerZoneViaECommons(splatoonType, mechanicId, position);
+                    RenderSafeSpotViaECommons(splatoonType, mechanicId, position);
+                    RenderMovementPathViaECommons(splatoonType, mechanicId, position);
                     break;
             }
         }
         catch (Exception ex)
         {
-            Plugin.Chat.Print($"[MarkerMind] Failed to render marker: {ex.Message}");
+            Plugin.Chat.Print($"[MarkerMind] Failed to render: {ex.Message}");
+            RenderChatFallback(mechanicId, position, disclosureLevel);
         }
     }
     
-    private void RenderDangerZone(string mechanicId, Vector3 position)
+    private void RenderDangerZoneViaECommons(Type splatoonType, string mechanicId, Vector3 position)
     {
-        // Danger zone: Red circle (ARGB format)
-        var elementId = $"{mechanicId}_danger_{elementCounter++}";
-        activeElementIds.Add(elementId);
-        
+        try
+        {
+            // Call Splatoon.AddDynamicElement or similar through ECommons
+            var elementId = $"markermind_{mechanicId}_danger_{elementCounter++}";
+            activeElementIds.Add(elementId);
+            
+            // Try to invoke DrawCircle or similar method
+            var drawMethod = splatoonType.GetMethod("DrawCircle");
+            if (drawMethod != null)
+            {
+                // Parameters: position, radius, color
+                drawMethod.Invoke(null, new object[] { position, 5.0f, 0xFF0000FF });
+                Plugin.Chat.Print($"[MarkerMind] Drew danger circle at {position.X:F1}, {position.Z:F1}");
+            }
+            else
+            {
+                // Try AddDynamicElement
+                var addMethod = splatoonType.GetMethod("AddDynamicElement");
+                if (addMethod != null)
+                {
+                    var element = CreateCircleData(position, 5.0f, 0xFF0000FF);
+                    addMethod.Invoke(null, new object[] { elementId, element });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Chat.Print($"[MarkerMind] Error drawing danger: {ex.Message}");
+        }
+    }
+    
+    private void RenderSafeSpotViaECommons(Type splatoonType, string mechanicId, Vector3 position)
+    {
+        try
+        {
+            var safePos = position + new Vector3(0, 0, 5);
+            var elementId = $"markermind_{mechanicId}_safe_{elementCounter++}";
+            activeElementIds.Add(elementId);
+            
+            var drawMethod = splatoonType.GetMethod("DrawCircle");
+            if (drawMethod != null)
+            {
+                drawMethod.Invoke(null, new object[] { safePos, 2.0f, 0xFF00FF00 });
+                Plugin.Chat.Print($"[MarkerMind] Drew safe circle at {safePos.X:F1}, {safePos.Z:F1}");
+            }
+        }
+        catch { }
+    }
+    
+    private void RenderMovementPathViaECommons(Type splatoonType, string mechanicId, Vector3 position)
+    {
+        try
+        {
+            if (Plugin.ClientState.LocalPlayer == null) return;
+            
+            var playerPos = Plugin.ClientState.LocalPlayer.Position;
+            var safePos = position + new Vector3(0, 0, 5);
+            var elementId = $"markermind_{mechanicId}_path_{elementCounter++}";
+            activeElementIds.Add(elementId);
+            
+            var drawMethod = splatoonType.GetMethod("DrawLine");
+            if (drawMethod != null)
+            {
+                drawMethod.Invoke(null, new object[] { playerPos, safePos, 0xFFFF0000 });
+            }
+        }
+        catch { }
+    }
+    
+    private object CreateCircleData(Vector3 position, float radius, uint color)
+    {
         // Create element data for Splatoon
-        var elementData = CreateCircleElement(position, 5.0f, 0xFF0000FF); // Red
-        
-        try
-        {
-            addElementMethod?.Invoke(splatoonInstance, new object[] { elementId, elementData });
-        }
-        catch
-        {
-            // Fallback: just track it
-        }
-    }
-    
-    private void RenderSafeSpot(string mechanicId, Vector3 position)
-    {
-        // Safe spot: Green circle, offset slightly
-        var safePosition = position + new Vector3(0, 0, 5); // 5 yalms north
-        var elementId = $"{mechanicId}_safe_{elementCounter++}";
-        activeElementIds.Add(elementId);
-        
-        var elementData = CreateCircleElement(safePosition, 2.0f, 0xFF00FF00); // Green
-        
-        try
-        {
-            addElementMethod?.Invoke(splatoonInstance, new object[] { elementId, elementData });
-        }
-        catch { }
-    }
-    
-    private void RenderMovementPath(string mechanicId, Vector3 position)
-    {
-        // Movement path: Blue line from player to safe spot
-        if (Plugin.ClientState.LocalPlayer == null) return;
-        
-        var playerPos = Plugin.ClientState.LocalPlayer.Position;
-        var safePosition = position + new Vector3(0, 0, 5);
-        
-        var elementId = $"{mechanicId}_path_{elementCounter++}";
-        activeElementIds.Add(elementId);
-        
-        var elementData = CreateLineElement(playerPos, safePosition, 0xFFFF0000); // Blue
-        
-        try
-        {
-            addElementMethod?.Invoke(splatoonInstance, new object[] { elementId, elementData });
-        }
-        catch { }
-    }
-    
-    private object CreateCircleElement(Vector3 position, float radius, uint color)
-    {
-        // Create a Splatoon-compatible element object
-        // This is a simplified version - actual Splatoon element structure may vary
         return new
         {
-            type = 0, // Circle
-            pos = position,
-            radius = radius,
-            color = color,
-            thicc = 2,
-            fill = true
-        };
-    }
-    
-    private object CreateLineElement(Vector3 start, Vector3 end, uint color)
-    {
-        return new
-        {
-            type = 1, // Line
-            start = start,
-            end = end,
-            color = color,
-            thicc = 3
+            Type = 0, // Circle
+            Pos = position,
+            Radius = radius,
+            Color = color,
+            Thicc = 2,
+            Fill = true
         };
     }
     
     private void RemoveElementsForMechanic(string mechanicId)
     {
-        var toRemove = activeElementIds.FindAll(id => id.StartsWith(mechanicId));
-        foreach (var elementId in toRemove)
-        {
-            try
-            {
-                removeElementMethod?.Invoke(splatoonInstance, new object[] { elementId });
-            }
-            catch { }
-            activeElementIds.Remove(elementId);
-        }
+        // ECommons Splatoon elements auto-expire, but we track them
+        activeElementIds.RemoveAll(id => id.Contains(mechanicId));
     }
     
     private void RenderChatFallback(string mechanicId, Vector3 position, int disclosureLevel)
@@ -211,17 +199,7 @@ public class SplatoonRenderer : IDisposable
     
     public void ClearAll()
     {
-        if (removeElementMethod != null)
-        {
-            foreach (var elementId in activeElementIds)
-            {
-                try
-                {
-                    removeElementMethod.Invoke(splatoonInstance, new object[] { elementId });
-                }
-                catch { }
-            }
-        }
+        // ECommons elements auto-expire
         activeElementIds.Clear();
     }
     
