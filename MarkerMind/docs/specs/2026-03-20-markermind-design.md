@@ -29,12 +29,19 @@ MarkerMind is a Dalamud plugin that bridges Bossmod Reborn's mechanic detection 
 
 ### 3.1 Progressive Disclosure Levels
 
-| Level | Marker Detail | Trigger Condition |
-|-------|--------------|-------------------|
-| **1** | Danger zones only | First encounter with mechanic |
-| **2** | + Suggested safe spots | Survive mechanic 3+ times |
-| **3** | + Movement paths | High-confidence predictions |
-| **4** | + Role-specific callouts | Role pattern learned |
+| Level | Marker Detail | Trigger Condition | Reset |
+|-------|--------------|-------------------|-------|
+| **1** | Danger zones only | First encounter with mechanic | Per-encounter wipe |
+| **2** | + Suggested safe spots | Confidence >= 0.5 AND 5+ samples | Never auto-resets |
+| **3** | + Movement paths | Confidence >= 0.7 AND 10+ samples | Never auto-resets |
+| **4** | + Role-specific callouts | Confidence >= 0.85 AND role clusters >= 3 samples each | Never auto-resets |
+
+**Threshold Rationale:** 
+- Level 2 (0.5): Barely better than random, but enough data to suggest
+- Level 3 (0.7): Reliable predictions, worth showing paths
+- Level 4 (0.85): High confidence, role nuances matter
+
+**Manual Override:** User can force disclosure level via `/markermind level set {1-4}`
 
 ### 3.2 Use Cases
 
@@ -103,9 +110,30 @@ MarkerMind is a Dalamud plugin that bridges Bossmod Reborn's mechanic detection 
 - **SafetyCalculator:** Where is safe vs unsafe?
 
 #### 4.2.4 Learner
-- **TelemetryCollector:** Captures position, movement, outcomes (live/die)
-- **PatternExtractor:** Identifies recurring patterns in successful runs
-- **ModelUpdater:** Adjusts weights based on new data
+
+**TelemetryCollector:**
+- **Sampling Rate:** 10Hz (100ms intervals) during active mechanics
+- **Capture Triggers:** Mechanic start, mechanic resolution, player death
+- **Data Points:** Position (x,y,z), velocity, facing direction, action used
+
+**PatternExtractor:**
+- **Algorithm:** Density-based spatial clustering (DBSCAN variant)
+- **Distance Threshold:** 2.0 yalms (configurable)
+- **Minimum Cluster Size:** 3 successful positions
+- **Role Separation:** Clusters computed per-role to handle contradictions
+
+**ModelUpdater:**
+- **Update Strategy:** Exponential moving average (α=0.3, weighted toward recent)
+- **Success Weight:** Survived = full weight, Died = half weight (what NOT to do)
+- **Decay:** Positions older than 90 days reduced to 25% weight
+
+**Confidence Calculation:**
+```
+confidence = min(1.0, (successCount / minSampleSize) * clusteringQuality)
+Where:
+- minSampleSize = 5 (configurable)
+- clusteringQuality = 0.5-1.0 based on cluster tightness
+```
 
 #### 4.2.5 Renderer
 - **SplatoonIPC:** Communicates with Splatoon via ECommons IPC
@@ -135,23 +163,36 @@ MarkerMind is a Dalamud plugin that bridges Bossmod Reborn's mechanic detection 
 
 ```json
 {
+  "schemaVersion": "1.0",
+  "lastUpdated": "2026-03-20T14:30:00Z",
   "encounterId": "p12s-p1",
+  "territoryId": 1154,
   "mechanics": {
-    "mechanicHash123": {
+    "SHA256:{mechanicDataHash}": {
       "name": "Paradeigma",
       "observations": 47,
       "successRate": 0.89,
-      "averageSafePositions": [...],
-      "rolePositions": {
-        "tank": [...],
-        "healer": [...],
-        "dps": [...]
-      },
-      "confidence": 0.78
+      "clusters": [
+        {
+          "centroid": {"x": 100.0, "y": 0.0, "z": 100.0},
+          "radius": 2.5,
+          "sampleCount": 23,
+          "role": "dps"
+        }
+      ],
+      "avoidZones": [
+        {"x": 95.0, "y": 0.0, "z": 105.0, "radius": 3.0}
+      ],
+      "confidence": 0.78,
+      "lastSeen": "2026-03-20T14:00:00Z"
     }
   }
 }
 ```
+
+**Hash Computation:** `mechanicDataHash = SHA256(bossDataId + mechanicName + phaseIndex + castBarId)`
+
+**Coordinate System:** 3D world coordinates relative to zone origin (y = height, ignored for most markers)
 
 ### 5.3 Telemetry Schema
 
@@ -174,8 +215,15 @@ MarkerMind is a Dalamud plugin that bridges Bossmod Reborn's mechanic detection 
 
 ### 6.1 Bossmod Integration
 - **IPC Method:** Subscribe to `BossMod` events via ECommons IPC
-- **Fallback:** Parse game memory for encounter state if Bossmod unavailable
 - **Data Needed:** Mechanic type, timing, targets, safe zones
+- **Event Format:** `BossMod.EventStart(uint bossId, string mechanicName, float duration)`
+
+**Without Bossmod:** Plugin falls back to minimal mode:
+- No mechanic prediction
+- Manual marker placement only
+- Chat message: "Bossmod not detected. Running in manual mode."
+
+**Note:** Game memory parsing is out of scope for MVP. Too fragile, version-dependent.
 
 ### 6.2 Splatoon Integration
 - **IPC Method:** `SplatoonIPC.InjectElement()` for dynamic markers
@@ -184,18 +232,54 @@ MarkerMind is a Dalamud plugin that bridges Bossmod Reborn's mechanic detection 
 
 ---
 
-## 7. Learning Algorithm (Simplified)
+## 7. Learning Algorithm
+
+### 7.1 Core Learning Loop
 
 ```
-For each mechanic occurrence:
-    1. Predict optimal marker position based on historical safe positions
-    2. Show marker to player
-    3. Capture player actual position after mechanic resolves
-    4. Record outcome (survived/died)
-    5. Update running average of "successful positions"
-    6. Increase confidence score
-    7. When confidence > threshold, enable next disclosure level
+ON_MECHANIC_START(mechanicId):
+    1. Load model for mechanicId from storage
+    2. IF confidence >= 0.5 AND sampleCount >= minSamples:
+           predictedPosition = clusterCentroid of successful positions
+       ELSE:
+           predictedPosition = bossRelativeFallback(mechanicId)
+    3. Render marker at predictedPosition
+    4. Start telemetry capture at 10Hz
+
+ON_MECHANIC_RESOLVE(mechanicId, outcome):
+    1. Stop telemetry capture
+    2. FOR EACH capturedPosition IN telemetryBuffer:
+           distanceToMarker = distance(capturedPosition, markerPosition)
+           IF outcome == "survived" AND distanceToMarker < tolerance:
+               addToSuccessCluster(capturedPosition)
+           ELSE IF outcome == "died":
+               addToAvoidCluster(capturedPosition)
+    3. Recalculate cluster centroids
+    4. Update confidence score
+    5. Persist updated model
+
+ON_CONFIDENCE_UPDATE:
+    IF confidence >= LEVEL_THRESHOLD[2] AND disclosureLevel < 2:
+        disclosureLevel = 2
+    ELSE IF confidence >= LEVEL_THRESHOLD[3] AND disclosureLevel < 3:
+        disclosureLevel = 3
+    ELSE IF confidence >= LEVEL_THRESHOLD[4] AND disclosureLevel < 4:
+        disclosureLevel = 4
 ```
+
+### 7.2 Configuration Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `samplingRateHz` | 10 | Telemetry samples per second |
+| `minSampleSize` | 5 | Minimum observations before predictions |
+| `positionTolerance` | 2.0 yalms | Distance threshold for "following marker" |
+| `clusterDistance` | 2.0 yalms | DBSCAN epsilon parameter |
+| `emaAlpha` | 0.3 | Exponential moving average weight |
+| `dataDecayDays` | 90 | Age before old data loses weight |
+| `level2Threshold` | 0.5 | Confidence needed for Level 2 |
+| `level3Threshold` | 0.7 | Confidence needed for Level 3 |
+| `level4Threshold` | 0.85 | Confidence needed for Level 4 |
 
 ---
 
