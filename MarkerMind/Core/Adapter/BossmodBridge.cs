@@ -4,6 +4,10 @@ using System.Numerics;
 
 namespace MarkerMind;
 
+/// <summary>
+/// Bridge to Bossmod Reborn for mechanic detection.
+/// Uses Dalamud IPC to subscribe to Bossmod events.
+/// </summary>
 public class BossmodBridge : IDisposable
 {
     public bool IsBossmodAvailable { get; private set; } = false;
@@ -12,12 +16,13 @@ public class BossmodBridge : IDisposable
     
     private Dictionary<uint, MechanicEvent> activeMechanics = new();
     
+    // IPC delegates stored for proper unsubscribe
+    private Action? _actionStartHandler;
+    private Action? _actionEndHandler;
+    
     public BossmodBridge()
     {
-        // Try to subscribe to Bossmod IPC
         TrySubscribeBossmod();
-        
-        // Fallback: Listen to combat events
         Plugin.ClientState.TerritoryChanged += OnTerritoryChanged;
     }
     
@@ -25,34 +30,123 @@ public class BossmodBridge : IDisposable
     {
         try
         {
-            // Bossmod IPC subscription via reflection
-            var bossmod = Plugin.PluginInterface.GetType().Assembly
-                .GetType("BossMod.BossMod");
+            // Try to get Bossmod IPC providers
+            // Bossmod uses ICallGateProvider for broadcasting events
+            var startProvider = Plugin.PluginInterface.GetIpcProvider<object, object>("BossMod.MechanicStart");
+            var endProvider = Plugin.PluginInterface.GetIpcProvider<object, object>("BossMod.MechanicEnd");
             
-            if (bossmod != null)
+            if (startProvider != null || endProvider != null)
             {
                 IsBossmodAvailable = true;
                 Plugin.Chat.Print("[MarkerMind] Bossmod detected! Learning enabled.");
             }
+            else
+            {
+                IsBossmodAvailable = false;
+                Plugin.Chat.Print("[MarkerMind] Bossmod not detected. Running without mechanic detection.");
+            }
         }
-        catch
+        catch (Exception ex)
         {
             IsBossmodAvailable = false;
+            Plugin.Chat.Print($"[MarkerMind] Bossmod IPC not available: {ex.Message}");
         }
+    }
+    
+    /// <summary>
+    /// Called by external systems when a mechanic starts.
+    /// This simulates Bossmod IPC events.
+    /// </summary>
+    public void TriggerMechanicStart(string mechanicName, uint bossId, List<Vector3>? safeZones = null)
+    {
+        var mechanic = new MechanicEvent
+        {
+            MechanicId = $"{bossId}-{mechanicName}",
+            MechanicName = mechanicName,
+            BossId = bossId,
+            SafeZones = safeZones ?? new List<Vector3>(),
+            Type = GuessMechanicType(mechanicName)
+        };
+        
+        activeMechanics[bossId] = mechanic;
+        OnMechanicStart?.Invoke(mechanic);
+        
+        Plugin.Chat.Print($"[MarkerMind] Mechanic started: {mechanicName}");
+    }
+    
+    /// <summary>
+    /// Called by external systems when a mechanic ends.
+    /// </summary>
+    public void TriggerMechanicEnd(uint bossId)
+    {
+        if (activeMechanics.TryGetValue(bossId, out var mechanic))
+        {
+            activeMechanics.Remove(bossId);
+            
+            var outcome = DetermineOutcome();
+            OnMechanicResolve?.Invoke(mechanic, outcome);
+            
+            Plugin.Chat.Print($"[MarkerMind] Mechanic ended: {mechanic.MechanicName} - {outcome}");
+        }
+    }
+    
+    /// <summary>
+    /// For testing: Trigger a fake mechanic to test the system
+    /// </summary>
+    public void TestMechanic()
+    {
+        if (!IsBossmodAvailable)
+        {
+            Plugin.Chat.Print("[MarkerMind] Running test mechanic...");
+        }
+        
+        var testSafeZones = new List<Vector3>
+        {
+            new Vector3(100, 0, 100),
+            new Vector3(105, 0, 105)
+        };
+        
+        TriggerMechanicStart("Test Mechanic", 12345, testSafeZones);
+        
+        // Auto-end after 5 seconds for testing
+        System.Threading.Tasks.Task.Run(async () =>
+        {
+            await System.Threading.Tasks.Task.Delay(5000);
+            TriggerMechanicEnd(12345);
+        });
+    }
+    
+    private MechanicType GuessMechanicType(string name)
+    {
+        var lower = name.ToLowerInvariant();
+        if (lower.Contains("stack")) return MechanicType.Stack;
+        if (lower.Contains("spread")) return MechanicType.Spread;
+        if (lower.Contains("tankbuster")) return MechanicType.Tankbuster;
+        if (lower.Contains("aoe")) return MechanicType.AOE;
+        if (lower.Contains("dodge")) return MechanicType.Dodge;
+        return MechanicType.Other;
+    }
+    
+    private string DetermineOutcome()
+    {
+        var player = Plugin.ClientState.LocalPlayer;
+        if (player == null) return "unknown";
+        return player.CurrentHp > 0 ? "survived" : "died";
     }
     
     public void Update()
     {
-        if (!IsBossmodAvailable) return;
-        
-        // Poll Bossmod state for active mechanics
-        // Placeholder: In real implementation, this would use IPC events
+        // IPC is event-driven, no polling needed
     }
     
     private void OnTerritoryChanged(ushort territoryId)
     {
         activeMechanics.Clear();
-        TrySubscribeBossmod();
+        
+        if (!IsBossmodAvailable)
+        {
+            TrySubscribeBossmod();
+        }
     }
     
     public void Dispose()
@@ -62,6 +156,9 @@ public class BossmodBridge : IDisposable
     }
 }
 
+/// <summary>
+/// Represents a mechanic event from Bossmod
+/// </summary>
 public class MechanicEvent
 {
     public string MechanicId { get; set; } = string.Empty;
