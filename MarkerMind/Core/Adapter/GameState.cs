@@ -1,6 +1,4 @@
 using Dalamud.Game.ClientState.Objects.SubKinds;
-using Dalamud.Game.ClientState.Objects.Types;
-using ECommons.GameHelpers;
 using System.Numerics;
 
 namespace MarkerMind;
@@ -30,7 +28,7 @@ public class GameStateTracker : IDisposable
     public void Update(IPlayerCharacter player)
     {
         LocalPlayer = player;
-        TerritoryId = Svc.ClientState.TerritoryType;
+        TerritoryId = Plugin.ClientState.TerritoryType;
         
         var currentPos = player.Position;
         var now = DateTime.UtcNow;

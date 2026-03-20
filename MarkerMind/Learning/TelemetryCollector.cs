@@ -46,7 +46,7 @@ public class TelemetryCollector : IDisposable
         if (!isCapturing) return;
         if (Plugin.Instance.gameState?.LocalPlayer == null) return;
         
-        timeSinceLastSample += (float)Svc.Framework.UpdateDelta.TotalSeconds;
+        timeSinceLastSample += (float)Plugin.Framework.UpdateDelta.TotalSeconds;
         
         if (timeSinceLastSample >= samplingInterval)
         {

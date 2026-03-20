@@ -33,7 +33,7 @@ public class LearningEngine : IDisposable
     public void Update()
     {
         // Check for encounter changes
-        var territoryId = Svc.ClientState.TerritoryType;
+        var territoryId = Plugin.ClientState.TerritoryType;
         var newEncounterId = $"{territoryId}";
         
         if (newEncounterId != currentEncounterId)
@@ -173,7 +173,7 @@ public class LearningEngine : IDisposable
             dataStore.SaveEncounter(currentEncounterId, new EncounterData
             {
                 EncounterId = currentEncounterId,
-                TerritoryId = Svc.ClientState.TerritoryType,
+                TerritoryId = Plugin.ClientState.TerritoryType,
                 Mechanics = mechanicCache
             });
         }

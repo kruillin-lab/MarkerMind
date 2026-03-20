@@ -1,5 +1,3 @@
-using ECommons.Events;
-using ECommons.GameHelpers;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -20,22 +18,21 @@ public class BossmodBridge : IDisposable
         TrySubscribeBossmod();
         
         // Fallback: Listen to combat events
-        Svc.ClientState.TerritoryChanged += OnTerritoryChanged;
+        Plugin.ClientState.TerritoryChanged += OnTerritoryChanged;
     }
     
     private void TrySubscribeBossmod()
     {
         try
         {
-            // Bossmod IPC subscription via ECommons
-            // This is a placeholder - actual implementation depends on Bossmod's IPC
-            var bossmod = Svc.PluginInterface.GetType().Assembly
+            // Bossmod IPC subscription via reflection
+            var bossmod = Plugin.PluginInterface.GetType().Assembly
                 .GetType("BossMod.BossMod");
             
             if (bossmod != null)
             {
                 IsBossmodAvailable = true;
-                Svc.Chat.Print("[MarkerMind] Bossmod detected! Learning enabled.");
+                Plugin.Chat.Print("[MarkerMind] Bossmod detected! Learning enabled.");
             }
         }
         catch
@@ -60,7 +57,7 @@ public class BossmodBridge : IDisposable
     
     public void Dispose()
     {
-        Svc.ClientState.TerritoryChanged -= OnTerritoryChanged;
+        Plugin.ClientState.TerritoryChanged -= OnTerritoryChanged;
         activeMechanics.Clear();
     }
 }

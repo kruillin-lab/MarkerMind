@@ -1,14 +1,18 @@
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using ECommons;
-using ECommons.Automation;
-using ECommons.DalamudServices;
 
 namespace MarkerMind;
 
 public sealed class Plugin : IDalamudPlugin
 {
     public static Plugin Instance { get; private set; } = null!;
+    public static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
+    public static IClientState ClientState { get; private set; } = null!;
+    public static IFramework Framework { get; private set; } = null!;
+    public static IChatGui Chat { get; private set; } = null!;
+    public static IObjectTable Objects { get; private set; } = null!;
+    public static ICondition Condition { get; private set; } = null!;
+    
     public string Name => "MarkerMind";
     
     public Configuration Config { get; private set; } = null!;
@@ -20,11 +24,21 @@ public sealed class Plugin : IDalamudPlugin
     private SplatoonRenderer splatoonRenderer = null!;
     private LearningEngine learningEngine = null!;
 
-    public Plugin(IDalamudPluginInterface pluginInterface)
+    public Plugin(
+        IDalamudPluginInterface pluginInterface,
+        IClientState clientState,
+        IFramework framework,
+        IChatGui chat,
+        IObjectTable objects,
+        ICondition condition)
     {
         Instance = this;
-        
-        ECommonsMain.Init(pluginInterface, this, Module.ObjectFunctions);
+        PluginInterface = pluginInterface;
+        ClientState = clientState;
+        Framework = framework;
+        Chat = chat;
+        Objects = objects;
+        Condition = condition;
         
         Config = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         Config.Initialize();
@@ -41,15 +55,16 @@ public sealed class Plugin : IDalamudPlugin
         
         // UI
         configWindow = new ConfigWindow();
-        Svc.PluginInterface.UiBuilder.Draw += configWindow.Draw;
-        Svc.PluginInterface.UiBuilder.OpenConfigUi += configWindow.Toggle;
+        pluginInterface.UiBuilder.Draw += configWindow.Draw;
+        pluginInterface.UiBuilder.OpenConfigUi += configWindow.Toggle;
+        pluginInterface.UiBuilder.OpenMainUi += configWindow.Toggle;
         
         // Game loop
-        Svc.Framework.Update += OnUpdate;
+        framework.Update += OnUpdate;
         
         // Welcome message
         var status = bossmodBridge.IsBossmodAvailable ? "enabled" : "disabled";
-        Svc.Chat.Print($"[MarkerMind] Loaded! Bossmod integration: {status}");
+        chat.Print($"[MarkerMind] Loaded! Bossmod integration: {status}");
     }
     
     private void WireEvents()
@@ -84,8 +99,8 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnUpdate(IFramework framework)
     {
-        if (!Svc.ClientState.IsLoggedIn) return;
-        if (Svc.ClientState.LocalPlayer is not { } player) return;
+        if (!ClientState.IsLoggedIn) return;
+        if (ClientState.LocalPlayer is not { } player) return;
         
         gameState.Update(player);
         bossmodBridge.Update();
@@ -95,16 +110,15 @@ public sealed class Plugin : IDalamudPlugin
 
     public void Dispose()
     {
-        Svc.Framework.Update -= OnUpdate;
-        Svc.PluginInterface.UiBuilder.Draw -= configWindow.Draw;
-        Svc.PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;
+        Framework.Update -= OnUpdate;
+        PluginInterface.UiBuilder.Draw -= configWindow.Draw;
+        PluginInterface.UiBuilder.OpenConfigUi -= configWindow.Toggle;
+        PluginInterface.UiBuilder.OpenMainUi -= configWindow.Toggle;
         
         learningEngine?.Dispose();
         splatoonRenderer?.Dispose();
         telemetry?.Dispose();
         bossmodBridge?.Dispose();
         gameState?.Dispose();
-        
-        ECommonsMain.Dispose();
     }
 }

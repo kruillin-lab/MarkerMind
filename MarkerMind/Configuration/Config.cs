@@ -28,5 +28,5 @@ public class Configuration : IPluginConfiguration
     public bool RequireSplatoon { get; set; } = false;
     
     public void Initialize() { }
-    public void Save() => Svc.PluginInterface.SavePluginConfig(this);
+    public void Save() => Plugin.PluginInterface.SavePluginConfig(this);
 }

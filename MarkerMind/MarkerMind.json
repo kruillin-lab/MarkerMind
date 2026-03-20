@@ -6,10 +6,11 @@
   "InternalName": "MarkerMind",
   "AssemblyVersion": "0.0.0.1",
   "Testing": true,
-  "RepoUrl": "https://github.com/yourname/markermind",
+  "RepoUrl": "https://github.com/kruillin-lab/MarkerMind",
   "ApplicableVersion": "any",
-  "DalamudApiLevel": 10,
+  "DalamudApiLevel": 12,
   "LoadPriority": 0,
   "IconUrl": "",
-  "ImageUrls": []
+  "ImageUrls": [],
+  "Tags": ["combat", "encounter", "markers", "learning", "splatoon", "bossmod"]
 }

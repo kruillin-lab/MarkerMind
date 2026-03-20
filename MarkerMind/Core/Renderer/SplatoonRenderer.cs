@@ -19,13 +19,13 @@ public class SplatoonRenderer : IDisposable
         try
         {
             // Check if Splatoon IPC is available
-            // This uses ECommons IPC
-            isSplatoonAvailable = Svc.PluginInterface.GetType().Assembly
+            // This uses reflection
+            isSplatoonAvailable = Plugin.PluginInterface.GetType().Assembly
                 .GetType("Splatoon.Splatoon") != null;
             
             if (isSplatoonAvailable)
             {
-                Svc.Chat.Print("[MarkerMind] Splatoon detected! Markers enabled.");
+                Plugin.Chat.Print("[MarkerMind] Splatoon detected! Markers enabled.");
             }
         }
         catch
@@ -116,7 +116,7 @@ public class SplatoonRenderer : IDisposable
             _ => "Mechanic detected"
         };
         
-        Svc.Chat.Print($"[MarkerMind] {levelText}: {mechanicId}");
+        Plugin.Chat.Print($"[MarkerMind] {levelText}: {mechanicId}");
     }
     
     private void RemoveElementsForMechanic(string mechanicId)

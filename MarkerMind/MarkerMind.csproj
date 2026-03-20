@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <LangVersion>11</LangVersion>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <LangVersion>13</LangVersion>
     <PlatformTarget>x64</PlatformTarget>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -35,17 +35,12 @@
     </Reference>
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\ECommons\ECommons\ECommons.csproj" />
-  </ItemGroup>
-
   <Target Name="CopyToDevPlugins" AfterTargets="Build">
     <PropertyGroup>
       <DevPluginsPath>$(APPDATA)\XIVLauncher\devPlugins\MarkerMind\</DevPluginsPath>
     </PropertyGroup>
     <MakeDir Directories="$(DevPluginsPath)" Condition="!Exists('$(DevPluginsPath)')" />
     <Copy SourceFiles="$(OutputPath)MarkerMind.dll" DestinationFiles="$(DevPluginsPath)MarkerMind.dll" />
-    <Copy SourceFiles="$(OutputPath)ECommons.dll" DestinationFiles="$(DevPluginsPath)ECommons.dll" />
     <Copy SourceFiles="$(MSBuildProjectDirectory)\MarkerMind.json" DestinationFiles="$(DevPluginsPath)MarkerMind.json" />
   </Target>
 </Project>
