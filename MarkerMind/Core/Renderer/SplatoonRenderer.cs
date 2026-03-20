@@ -7,8 +7,7 @@ namespace MarkerMind;
 
 /// <summary>
 /// Renders visual markers via Splatoon Scripting system.
-/// Creates Scripting-compatible layout JSON and injects it into Splatoon.
-/// This is the most reliable method that doesn't require ECommons.
+/// Creates Scripting-compatible layout JSON.
 /// </summary>
 public class SplatoonRenderer : IDisposable
 {
@@ -24,24 +23,9 @@ public class SplatoonRenderer : IDisposable
     
     private void CheckSplatoonAvailability()
     {
-        try
-        {
-            // Check if Splatoon plugin is loaded by looking for its IPC
-            // Splatoon exposes commands via Dalamud's command system
-            var commands = Plugin.PluginInterface.GeneralData?.GetType()
-                .GetProperty("RegisteredCommands")?.GetValue(Plugin.PluginInterface.GeneralData);
-            
-            // Alternative: Just assume Splatoon is available if installed
-            // We'll try to use Scripting API which is file-based
-            isSplatoonAvailable = true;
-            
-            Plugin.Chat.Print("[MarkerMind] Using Splatoon Scripting API for markers.");
-        }
-        catch
-        {
-            isSplatoonAvailable = false;
-            Plugin.Chat.Print("[MarkerMind] Splatoon not detected. Using chat fallback.");
-        }
+        // Splatoon detection is done at render time
+        // We assume it might be available and try file-based approach
+        isSplatoonAvailable = true;
     }
     
     public void RenderMarker(string mechanicId, Vector3 position, int disclosureLevel, PlayerRole role)
@@ -142,10 +126,7 @@ public class SplatoonRenderer : IDisposable
     {
         try
         {
-            // Method 1: Try to use Splatoon's IPC if available
-            // Splatoon accepts layouts via file or memory
-            
-            // Write to a temp file that Splatoon can load
+            // Write to Splatoon's Script folder
             var tempPath = System.IO.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "XIVLauncher", "pluginConfigs", "Splatoon", "Script", "markermind_dynamic.json"
@@ -154,27 +135,8 @@ public class SplatoonRenderer : IDisposable
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(tempPath)!);
             System.IO.File.WriteAllText(tempPath, layoutJson);
             
-            // Try to notify Splatoon to reload scripts
-            // This uses reflection to call Splatoon's script reload method
-            var splatoonAssembly = AppDomain.CurrentDomain.GetAssemblies()
-                .FirstOrDefault(a => a.FullName?.Contains("Splatoon") == true);
-            
-            if (splatoonAssembly != null)
-            {
-                var scriptManagerType = splatoonAssembly.GetType("Splatoon.Scripting.ScriptManager");
-                if (scriptManagerType != null)
-                {
-                    var reloadMethod = scriptManagerType.GetMethod("ReloadScripts");
-                    if (reloadMethod != null)
-                    {
-                        reloadMethod.Invoke(null, null);
-                        return true;
-                    }
-                }
-            }
-            
-            // If we can't reload automatically, the file is there for manual reload
-            return true;
+            // Success if file was written
+            return System.IO.File.Exists(tempPath);
         }
         catch
         {
