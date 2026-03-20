@@ -8,7 +8,7 @@
   "Testing": true,
   "RepoUrl": "https://github.com/kruillin-lab/MarkerMind",
   "ApplicableVersion": "any",
-  "DalamudApiLevel": 12,
+  "DalamudApiLevel": 14,
   "LoadPriority": 0,
   "IconUrl": "",
   "ImageUrls": [],
