@@ -17,6 +17,11 @@ public class LearningEngine : IDisposable
     // Active mechanic tracking
     private string? activeMechanicId;
     private Vector3? markerPosition;
+
+    public string? ActiveMechanicId => activeMechanicId;
+    public Vector3? ActiveMarkerPosition => markerPosition;
+    public Dictionary<string, MechanicData> MechanicCache => mechanicCache;
+    public DataStore DataStore => dataStore;
     
     public LearningEngine()
     {
@@ -206,6 +211,9 @@ public class LearningEngine : IDisposable
     
     public int GetDisclosureLevel(string mechanicId)
     {
+        if (Plugin.Instance?.Config?.OverrideDisclosureLevel is { } overrideLvl and >= 1 and <= 4)
+            return overrideLvl;
+
         if (!mechanicCache.TryGetValue(mechanicId, out var mechanicData))
             return 1;
         
@@ -220,6 +228,64 @@ public class LearningEngine : IDisposable
         
         return 1;
     }
+
+    public void InjectManualSample(string mechanicId, string mechanicName, Vector3 position, PlayerRole role)
+    {
+        if (string.IsNullOrEmpty(currentEncounterId))
+        {
+            currentEncounterId = $"{Plugin.ClientState.TerritoryType}";
+        }
+        
+        if (!mechanicCache.TryGetValue(mechanicId, out var mechanicData))
+        {
+            mechanicData = new MechanicData
+            {
+                Name = mechanicName,
+                Observations = 0,
+                SuccessRate = 1.0f,
+                Confidence = 0.5f
+            };
+            mechanicCache[mechanicId] = mechanicData;
+        }
+
+        mechanicData.Observations++;
+        mechanicData.LastSeen = DateTime.UtcNow;
+
+        var roleStr = role.ToString().ToLowerInvariant();
+        var existing = mechanicData.Clusters
+            .FirstOrDefault(c => c.Role.Equals(roleStr, StringComparison.OrdinalIgnoreCase));
+
+        if (existing != null)
+        {
+            float alpha = Plugin.Instance?.Config.EmaAlpha ?? 0.3f;
+            existing.Centroid = new Vector3(
+                existing.Centroid.X * (1 - alpha) + position.X * alpha,
+                existing.Centroid.Y * (1 - alpha) + position.Y * alpha,
+                existing.Centroid.Z * (1 - alpha) + position.Z * alpha
+            );
+            existing.SampleCount++;
+        }
+        else
+        {
+            mechanicData.Clusters.Add(new ClusterData
+            {
+                Centroid = position,
+                Radius = 1.0f,
+                SampleCount = 1,
+                Role = roleStr
+            });
+        }
+
+        UpdateConfidence(mechanicData);
+
+        dataStore.SaveEncounter(currentEncounterId, new EncounterData
+        {
+            EncounterId = currentEncounterId,
+            TerritoryId = Plugin.ClientState.TerritoryType,
+            Mechanics = mechanicCache
+        });
+    }
+    
     
     public void Dispose()
     {

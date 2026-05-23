@@ -26,6 +26,8 @@ public class Configuration : IPluginConfiguration
     public float MarkerOpacity { get; set; } = 0.8f;
     public int MaxMarkersPerMechanic { get; set; } = 3;
     public bool RequireSplatoon { get; set; } = false;
+    public bool ShowGameOverlay { get; set; } = true;
+    public int OverrideDisclosureLevel { get; set; } = 0;
     
     public void Initialize() { }
     public void Save() => Plugin.PluginInterface.SavePluginConfig(this);

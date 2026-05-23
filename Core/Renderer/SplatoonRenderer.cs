@@ -1,6 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
+using ECommons.SplatoonAPI;
+using SplatoonElement = ECommons.SplatoonAPI.Element;
+using SplatoonElementType = ECommons.SplatoonAPI.ElementType;
 
 namespace MarkerMind;
 
@@ -18,46 +22,46 @@ public class SplatoonRenderer : IDisposable
     {
         try
         {
-            // Check if Splatoon IPC is available
-            // This uses reflection
-            isSplatoonAvailable = Plugin.PluginInterface.GetType().Assembly
-                .GetType("Splatoon.Splatoon") != null;
+            isSplatoonAvailable = Splatoon.IsConnected();
             
             if (isSplatoonAvailable)
             {
                 Plugin.Chat.Print("[MarkerMind] Splatoon detected! Markers enabled.");
             }
+            else if (Plugin.Instance.Config.RequireSplatoon)
+            {
+                Plugin.Chat.Print("[MarkerMind] Splatoon not connected. Ground markers disabled.");
+            }
         }
-        catch
+        catch (Exception ex)
         {
             isSplatoonAvailable = false;
+            Plugin.Chat.Print($"[MarkerMind] Splatoon check failed: {ex.Message}");
         }
     }
     
     public void RenderMarker(string mechanicId, Vector3 position, int disclosureLevel, PlayerRole role)
     {
+        CheckSplatoonAvailability();
+
         if (!isSplatoonAvailable)
         {
             RenderChatFallback(mechanicId, position, disclosureLevel);
             return;
         }
         
-        // Clear previous elements for this mechanic
         RemoveElementsForMechanic(mechanicId);
-        
-        // Render based on disclosure level
+
         switch (disclosureLevel)
         {
             case 1:
                 RenderDangerZone(mechanicId, position);
                 break;
             case 2:
-                RenderDangerZone(mechanicId, position);
                 RenderSafeSpot(mechanicId, position);
                 break;
             case 3:
             case 4:
-                RenderDangerZone(mechanicId, position);
                 RenderSafeSpot(mechanicId, position);
                 RenderMovementPath(mechanicId, position);
                 break;
@@ -66,10 +70,7 @@ public class SplatoonRenderer : IDisposable
     
     private void RenderDangerZone(string mechanicId, Vector3 position)
     {
-        // Create danger zone circle (red)
-        // This would use Splatoon IPC to inject elements
-        // Placeholder implementation
-        activeElements.Add(new ActiveElement
+        AddDynamicElement(new ActiveElement
         {
             MechanicId = mechanicId,
             Type = ElementType.DangerZone,
@@ -79,8 +80,7 @@ public class SplatoonRenderer : IDisposable
     
     private void RenderSafeSpot(string mechanicId, Vector3 position)
     {
-        // Create safe spot marker (green)
-        activeElements.Add(new ActiveElement
+        AddDynamicElement(new ActiveElement
         {
             MechanicId = mechanicId,
             Type = ElementType.SafeSpot,
@@ -90,11 +90,10 @@ public class SplatoonRenderer : IDisposable
     
     private void RenderMovementPath(string mechanicId, Vector3 position)
     {
-        // Create movement arrow/path
         if (Plugin.Instance?.gameState?.LocalPlayer != null)
         {
             var playerPos = Plugin.Instance.gameState.Position;
-            activeElements.Add(new ActiveElement
+            AddDynamicElement(new ActiveElement
             {
                 MechanicId = mechanicId,
                 Type = ElementType.Path,
@@ -103,29 +102,95 @@ public class SplatoonRenderer : IDisposable
             });
         }
     }
+
+    private void AddDynamicElement(ActiveElement element)
+    {
+        activeElements.Add(element);
+
+        if (!TryCreateSplatoonElement(element, out var splatoonElement))
+        {
+            Plugin.Chat.Print($"[MarkerMind] Failed to create {element.Type} marker for {element.MechanicId}.");
+            return;
+        }
+
+        var name = ElementNamespace(element.MechanicId);
+        var added = Splatoon.AddDynamicElement(name, splatoonElement, -1L);
+        if (!added)
+        {
+            Plugin.Chat.Print($"[MarkerMind] Splatoon rejected {element.Type} marker for {element.MechanicId}.");
+        }
+    }
+
+    private bool TryCreateSplatoonElement(ActiveElement element, out SplatoonElement splatoonElement)
+    {
+        splatoonElement = element.Type == ElementType.Path
+            ? new SplatoonElement(SplatoonElementType.LineBetweenTwoFixedCoordinates)
+            : new SplatoonElement(SplatoonElementType.CircleAtFixedCoordinates);
+
+        splatoonElement.Enabled = true;
+
+        switch (element.Type)
+        {
+            case ElementType.DangerZone:
+                splatoonElement.SetRefCoord(element.Position);
+                splatoonElement.radius = 3.0f;
+                splatoonElement.thicc = 4.0f;
+                splatoonElement.color = 0x664040FF;
+                return true;
+            case ElementType.SafeSpot:
+                splatoonElement.SetRefCoord(element.Position);
+                splatoonElement.radius = 1.5f;
+                splatoonElement.thicc = 5.0f;
+                splatoonElement.color = 0x8030FF30;
+                splatoonElement.overlayText = "Safe";
+                splatoonElement.overlayTextColor = 0xFFFFFFFF;
+                splatoonElement.overlayBGColor = 0x80000000;
+                return true;
+            case ElementType.Path:
+                splatoonElement.SetRefCoord(element.StartPosition);
+                splatoonElement.SetOffCoord(element.EndPosition);
+                splatoonElement.thicc = 5.0f;
+                splatoonElement.color = 0x80FFFF30;
+                return true;
+            default:
+                return false;
+        }
+    }
     
     private void RenderChatFallback(string mechanicId, Vector3 position, int disclosureLevel)
     {
-        // Fallback: Print to chat
         var levelText = disclosureLevel switch
         {
-            1 => "Danger detected",
-            2 => "Safe spot suggested",
-            3 => "Follow the path",
-            4 => "Position for your role",
-            _ => "Mechanic detected"
+            1 => "Danger zone",
+            2 => "Safe spot",
+            3 => "Move here",
+            4 => $"Role spot ({Plugin.Instance?.gameState?.Role})",
+            _ => "Mechanic"
         };
-        
-        Plugin.Chat.Print($"[MarkerMind] {levelText}: {mechanicId}");
+
+        Plugin.Chat.Print($"[MarkerMind] {levelText} at ({position.X:F1}, {position.Y:F1}, {position.Z:F1}) — check ground overlay (green = safe).");
     }
     
     private void RemoveElementsForMechanic(string mechanicId)
     {
         activeElements.RemoveAll(e => e.MechanicId == mechanicId);
+        if (Splatoon.IsConnected())
+        {
+            Splatoon.RemoveDynamicElements(ElementNamespace(mechanicId));
+        }
     }
+
+    private static string ElementNamespace(string mechanicId) => $"MarkerMind:{mechanicId}";
     
     public void ClearAll()
     {
+        foreach (var mechanicId in activeElements.Select(e => e.MechanicId).Distinct().ToList())
+        {
+            if (Splatoon.IsConnected())
+            {
+                Splatoon.RemoveDynamicElements(ElementNamespace(mechanicId));
+            }
+        }
         activeElements.Clear();
     }
     

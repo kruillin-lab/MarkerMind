@@ -48,6 +48,27 @@ public class DataStore
         var json = JsonSerializer.Serialize(data, jsonOptions);
         File.WriteAllText(path, json);
     }
+
+    public string BasePath => basePath;
+
+    public string[] GetSavedEncounterIds()
+    {
+        var dir = Path.Combine(basePath, "encounters");
+        if (!Directory.Exists(dir)) return Array.Empty<string>();
+        return Directory.GetFiles(dir, "*.json")
+            .Select(Path.GetFileNameWithoutExtension)
+            .Where(x => !string.IsNullOrEmpty(x))
+            .ToArray()!;
+    }
+
+    public void DeleteEncounter(string encounterId)
+    {
+        string path = Path.Combine(basePath, "encounters", $"{encounterId}.json");
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
+    }
 }
 
 public class EncounterData
